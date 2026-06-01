@@ -121,6 +121,7 @@ test.describe("portfolio visual smoke", () => {
     let requestBody: Record<string, unknown> | null = null;
     await page.route("/api/contact", async (route) => {
       requestBody = route.request().postDataJSON();
+      await new Promise((resolve) => setTimeout(resolve, 220));
       await route.fulfill({
         contentType: "application/json",
         body: JSON.stringify({ ok: true }),
@@ -140,13 +141,26 @@ test.describe("portfolio visual smoke", () => {
     });
     await page.getByRole("button", { name: "Send", exact: true }).click();
 
+    await expect(page.getByRole("button", { name: "Sending", exact: true })).toBeVisible();
+    await expect(page.locator(".loading-icon")).toBeVisible();
     await expect(page.getByText("Sent successfully. I will reply from my inbox.")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Send a project note" })).toBeHidden();
     expect(requestBody).toMatchObject({
       customerEmail: "customer@example.com",
       message: "I want to invite you to build a product.",
       name: "Test Customer",
     });
     expect((requestBody?.attachment as { name?: string } | undefined)?.name).toBe("brief.txt");
+  });
+
+  test("contact dialog closes when clicking outside", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto("/", { waitUntil: "networkidle" });
+
+    await page.getByRole("button", { name: "Send mail" }).click();
+    await expect(page.getByRole("heading", { name: "Send a project note" })).toBeVisible();
+    await page.locator(".contact-dialog-backdrop").click({ position: { x: 900, y: 120 } });
+    await expect(page.getByRole("heading", { name: "Send a project note" })).toBeHidden();
   });
 
   test("Buddy orbit cards open screenshot modal and close with app-window animation", async ({ page }) => {

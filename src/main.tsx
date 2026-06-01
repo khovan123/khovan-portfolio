@@ -5,6 +5,7 @@ import {
   BracketsCurly,
   Check,
   CheckCircle,
+  CircleNotch,
   Cloud,
   Code,
   Copy,
@@ -15,7 +16,6 @@ import {
   GithubLogo,
   Moon,
   PaperPlaneTilt,
-  Paperclip,
   Sparkle,
   Sun,
   TerminalWindow,
@@ -552,14 +552,22 @@ function ContactDialog({ open, onClose }: { open: boolean; onClose: () => void }
   const [notice, setNotice] = React.useState("");
 
   React.useEffect(() => {
-    if (open) return;
+    if (status !== "success") return;
 
     const timer = window.setTimeout(() => {
       setStatus("idle");
       setNotice("");
-    }, 240);
+    }, 2600);
     return () => window.clearTimeout(timer);
-  }, [open]);
+  }, [status]);
+
+  const closeDialog = () => {
+    onClose();
+    if (status !== "sending" && status !== "success") {
+      setStatus("idle");
+      setNotice("");
+    }
+  };
 
   const readAttachment = React.useCallback(async () => {
     if (!file) return null;
@@ -611,6 +619,7 @@ function ContactDialog({ open, onClose }: { open: boolean; onClose: () => void }
       setCustomerEmail("");
       setMessage("");
       setFile(null);
+      onClose();
     } catch (error) {
       setStatus("error");
       setNotice(error instanceof Error ? error.message : "Could not send your message.");
@@ -618,14 +627,16 @@ function ContactDialog({ open, onClose }: { open: boolean; onClose: () => void }
   };
 
   return (
-    <div className={`contact-dialog-shell ${open ? "is-open" : ""}`} aria-hidden={!open}>
-      <form className="contact-dialog" onSubmit={submitContact}>
+    <>
+      <div className={`contact-dialog-shell ${open ? "is-open" : ""}`} aria-hidden={!open}>
+        <button className="contact-dialog-backdrop" type="button" aria-label="Close contact dialog" onClick={closeDialog} />
+        <form className="contact-dialog" onSubmit={submitContact}>
         <div className="contact-dialog-top">
           <div>
             <span className="section-kicker">Contact Minh</span>
             <h3>Send a project note</h3>
           </div>
-          <button className="dialog-icon-button" type="button" onClick={onClose} aria-label="Close contact dialog">
+          <button className="dialog-icon-button" type="button" onClick={closeDialog} aria-label="Close contact dialog">
             <X size={16} weight="bold" />
           </button>
         </div>
@@ -661,19 +672,26 @@ function ContactDialog({ open, onClose }: { open: boolean; onClose: () => void }
           />
         </label>
 
-        {notice ? (
+        {notice && status === "error" ? (
           <div className={`contact-notice ${status}`}>
-            {status === "success" ? <CheckCircle size={17} weight="duotone" /> : <WarningCircle size={17} weight="duotone" />}
+            <WarningCircle size={17} weight="duotone" />
             <span>{notice}</span>
           </div>
         ) : null}
 
         <button className="contact-submit" type="submit" disabled={status === "sending"}>
-          {status === "sending" ? <Paperclip size={18} weight="duotone" /> : <PaperPlaneTilt size={18} weight="duotone" />}
+          {status === "sending" ? <CircleNotch className="loading-icon" size={18} weight="bold" /> : <PaperPlaneTilt size={18} weight="duotone" />}
           {status === "sending" ? "Sending" : "Send"}
         </button>
-      </form>
-    </div>
+        </form>
+      </div>
+      {status === "success" ? (
+        <div className="contact-toast success" role="status">
+          <CheckCircle size={18} weight="duotone" />
+          <span>{notice}</span>
+        </div>
+      ) : null}
+    </>
   );
 }
 
