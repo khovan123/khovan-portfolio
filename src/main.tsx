@@ -4,17 +4,24 @@ import {
   ArrowSquareOut,
   BracketsCurly,
   Check,
+  CheckCircle,
   Cloud,
   Code,
   Copy,
   Database,
   DownloadSimple,
+  EnvelopeSimple,
   GitBranch,
   GithubLogo,
   Moon,
+  PaperPlaneTilt,
+  Paperclip,
   Sparkle,
   Sun,
   TerminalWindow,
+  UploadSimple,
+  WarningCircle,
+  X,
 } from "@phosphor-icons/react";
 import * as THREE from "three";
 import BuddyShowcase, { type ThemeMode } from "./BuddyShowcase";
@@ -536,6 +543,140 @@ function NpmDownloadGraph() {
   );
 }
 
+function ContactDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [name, setName] = React.useState("");
+  const [customerEmail, setCustomerEmail] = React.useState("");
+  const [message, setMessage] = React.useState("");
+  const [file, setFile] = React.useState<File | null>(null);
+  const [status, setStatus] = React.useState<"idle" | "sending" | "success" | "error">("idle");
+  const [notice, setNotice] = React.useState("");
+
+  React.useEffect(() => {
+    if (open) return;
+
+    const timer = window.setTimeout(() => {
+      setStatus("idle");
+      setNotice("");
+    }, 240);
+    return () => window.clearTimeout(timer);
+  }, [open]);
+
+  const readAttachment = React.useCallback(async () => {
+    if (!file) return null;
+    if (file.size > 4 * 1024 * 1024) {
+      throw new Error("Attachment must be 4MB or smaller.");
+    }
+
+    return new Promise<{ content: string; name: string; type: string }>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error("Could not read attachment."));
+      reader.onload = () => {
+        const result = String(reader.result || "");
+        resolve({
+          content: result.split(",")[1] || "",
+          name: file.name,
+          type: file.type || "application/octet-stream",
+        });
+      };
+      reader.readAsDataURL(file);
+    });
+  }, [file]);
+
+  const submitContact = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setStatus("sending");
+    setNotice("");
+
+    try {
+      const attachment = await readAttachment();
+      const response = await fetch("/api/contact", {
+        body: JSON.stringify({
+          attachment,
+          customerEmail,
+          message,
+          name,
+        }),
+        headers: { "Content-Type": "application/json" },
+        method: "POST",
+      });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(payload.error || "Could not send your message.");
+      }
+
+      setStatus("success");
+      setNotice("Sent successfully. I will reply from my inbox.");
+      setName("");
+      setCustomerEmail("");
+      setMessage("");
+      setFile(null);
+    } catch (error) {
+      setStatus("error");
+      setNotice(error instanceof Error ? error.message : "Could not send your message.");
+    }
+  };
+
+  return (
+    <div className={`contact-dialog-shell ${open ? "is-open" : ""}`} aria-hidden={!open}>
+      <form className="contact-dialog" onSubmit={submitContact}>
+        <div className="contact-dialog-top">
+          <div>
+            <span className="section-kicker">Contact Minh</span>
+            <h3>Send a project note</h3>
+          </div>
+          <button className="dialog-icon-button" type="button" onClick={onClose} aria-label="Close contact dialog">
+            <X size={16} weight="bold" />
+          </button>
+        </div>
+
+        <label>
+          <span>Your name</span>
+          <input value={name} onChange={(event) => setName(event.target.value)} required maxLength={120} name="name" autoComplete="name" />
+        </label>
+        <label>
+          <span>Your email</span>
+          <input
+            value={customerEmail}
+            onChange={(event) => setCustomerEmail(event.target.value)}
+            required
+            maxLength={160}
+            name="email"
+            type="email"
+            autoComplete="email"
+          />
+        </label>
+        <label>
+          <span>What do you want from me?</span>
+          <textarea value={message} onChange={(event) => setMessage(event.target.value)} required maxLength={1800} name="message" rows={5} />
+        </label>
+
+        <label className="attachment-drop">
+          <UploadSimple size={18} weight="duotone" />
+          <span>{file ? file.name : "Add a helpful file if you have one"}</span>
+          <input
+            type="file"
+            onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+            aria-label="Attach optional file"
+          />
+        </label>
+
+        {notice ? (
+          <div className={`contact-notice ${status}`}>
+            {status === "success" ? <CheckCircle size={17} weight="duotone" /> : <WarningCircle size={17} weight="duotone" />}
+            <span>{notice}</span>
+          </div>
+        ) : null}
+
+        <button className="contact-submit" type="submit" disabled={status === "sending"}>
+          {status === "sending" ? <Paperclip size={18} weight="duotone" /> : <PaperPlaneTilt size={18} weight="duotone" />}
+          {status === "sending" ? "Sending" : "Send"}
+        </button>
+      </form>
+    </div>
+  );
+}
+
 function ProjectPanel({ project, index, themeMode }: { project: (typeof projects)[number]; index: number; themeMode: ThemeMode }) {
   return (
     <article className={`project-panel reveal ${index === 1 ? "reverse" : ""}`}>
@@ -590,6 +731,7 @@ function ProjectPanel({ project, index, themeMode }: { project: (typeof projects
 function App() {
   useScrollReveal();
   const [themeMode, setThemeMode] = React.useState<ThemeMode>("light");
+  const [contactOpen, setContactOpen] = React.useState(false);
 
   React.useEffect(() => {
     document.documentElement.dataset.theme = themeMode;
@@ -598,6 +740,7 @@ function App() {
   return (
     <main>
       <CustomCursor />
+      <ContactDialog open={contactOpen} onClose={() => setContactOpen(false)} />
       <div className="grain" />
       <nav className="dock" aria-label="Primary navigation">
         <a href="#work">Work</a>
@@ -738,10 +881,10 @@ function App() {
             <GithubLogo size={18} weight="duotone" />
             GitHub profile
           </LinkButton>
-          <LinkButton href="mailto:minhpnq1807@gmail.com" variant="ghost">
-            <TerminalWindow size={18} weight="duotone" />
-            Email Minh
-          </LinkButton>
+          <button className="button ghost" type="button" onClick={() => setContactOpen(true)}>
+            <EnvelopeSimple size={18} weight="duotone" />
+            Send mail
+          </button>
         </div>
       </section>
 

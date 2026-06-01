@@ -116,6 +116,39 @@ test.describe("portfolio visual smoke", () => {
       .toBe("npm install -g @minhpnq1807/contextos\nctx setup");
   });
 
+  test("contact dialog submits customer details with optional attachment", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    let requestBody: Record<string, unknown> | null = null;
+    await page.route("/api/contact", async (route) => {
+      requestBody = route.request().postDataJSON();
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({ ok: true }),
+      });
+    });
+    await page.goto("/", { waitUntil: "networkidle" });
+
+    await page.getByRole("button", { name: "Send mail" }).click();
+    await expect(page.getByRole("heading", { name: "Send a project note" })).toBeVisible();
+    await page.getByLabel("Your name").fill("Test Customer");
+    await page.getByLabel("Your email").fill("customer@example.com");
+    await page.getByLabel("What do you want from me?").fill("I want to invite you to build a product.");
+    await page.getByLabel("Attach optional file").setInputFiles({
+      name: "brief.txt",
+      mimeType: "text/plain",
+      buffer: Buffer.from("project brief"),
+    });
+    await page.getByRole("button", { name: "Send", exact: true }).click();
+
+    await expect(page.getByText("Sent successfully. I will reply from my inbox.")).toBeVisible();
+    expect(requestBody).toMatchObject({
+      customerEmail: "customer@example.com",
+      message: "I want to invite you to build a product.",
+      name: "Test Customer",
+    });
+    expect((requestBody?.attachment as { name?: string } | undefined)?.name).toBe("brief.txt");
+  });
+
   test("Buddy orbit cards open screenshot modal and close with app-window animation", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto("/", { waitUntil: "networkidle" });
@@ -197,14 +230,16 @@ test.describe("portfolio visual smoke", () => {
     await orbitButton.scrollIntoViewIfNeeded();
     await page.waitForTimeout(1200);
     await orbitButton.hover();
+    await page.waitForTimeout(250);
 
     const before = await orbitButton.boundingBox();
     expect(before).not.toBeNull();
 
     const scrollBefore = await page.evaluate(() => window.scrollY);
+    await page.mouse.move(before!.x + before!.width / 2, before!.y + before!.height / 2);
     await page.mouse.down();
-    const targetX = before!.x - 130;
-    const targetY = before!.y + 70;
+    const targetX = before!.x + before!.width / 2 - 90;
+    const targetY = before!.y + before!.height / 2 + 58;
     await page.mouse.move(targetX, targetY, { steps: 8 });
     const scrollDuringDrag = await page.evaluate(() => window.scrollY);
     const held = await orbitButton.boundingBox();
