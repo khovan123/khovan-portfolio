@@ -792,7 +792,7 @@ function App() {
               <BracketsCurly size={18} weight="duotone" />
               View work
             </LinkButton>
-            <LinkButton href="/fullstack.pdf" download="Phan-Nguyen-Quoc-Minh-Resume.pdf">
+            <LinkButton href="/cv.pdf" download="Phan-Nguyen-Quoc-Minh-Resume.pdf">
               <DownloadSimple size={18} weight="duotone" />
               Resume
             </LinkButton>
@@ -874,7 +874,7 @@ function App() {
             Open the PDF directly if the browser blocks inline preview. The portfolio keeps the resume one click away
             from the hero and contact section.
           </p>
-          <LinkButton href="/fullstack.pdf" download="Phan-Nguyen-Quoc-Minh-Resume.pdf">
+          <LinkButton href="/cv.pdf" download="Phan-Nguyen-Quoc-Minh-Resume.pdf">
             <DownloadSimple size={18} weight="duotone" />
             Resume
           </LinkButton>
@@ -882,7 +882,7 @@ function App() {
         <a
           className="resume-preview reveal"
           download="Phan-Nguyen-Quoc-Minh-Resume.pdf"
-          href="/fullstack.pdf"
+          href="/cv.pdf"
           aria-label="Download resume PDF"
         >
           <img src="/resume-preview.png" alt="Preview of Phan Nguyen Quoc Minh full-stack resume" />
